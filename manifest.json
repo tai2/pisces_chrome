@@ -7,14 +7,15 @@
         "background": {
             "scripts": [
                 "js/jquery-2.1.1.min.js",
+                "js/pisces.js",
                 "js/background.js"
             ]
         }
     },
     "sockets" : {
         "udp" : {
-            "send": ["224.0.0.1:30000"],
-            "bind": ["224.0.0.1:30000"]
+            "send": ["*"],
+            "bind": ["*"]
         }
     },
     "icons": { "16": "img/icon-16.png", "128": "img/icon-128.png" }
