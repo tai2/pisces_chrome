@@ -1,0 +1,18 @@
+{
+    "manifest_version": 2,
+    "name": "Pisces",
+    "description": "IP multicast based messaging.",
+    "version": "0.1",
+    "app": {
+        "background": {
+            "scripts": ["js/background.js"]
+        }
+    },
+    "sockets" : {
+        "udp" : {
+            "send": ["224.0.0.1:30000"],
+            "bind": ["224.0.0.1:30000"]
+        }
+    },
+    "icons": { "16": "img/icon-16.png", "128": "img/icon-128.png" }
+}
