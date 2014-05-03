@@ -5,7 +5,10 @@
     "version": "0.1",
     "app": {
         "background": {
-            "scripts": ["js/background.js"]
+            "scripts": [
+                "js/jquery-2.1.1.min.js",
+                "js/background.js"
+            ]
         }
     },
     "sockets" : {
