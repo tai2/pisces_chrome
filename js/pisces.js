@@ -18,6 +18,12 @@ function createAgent(groupAddress, port) {
        return buf;
     }
 
+    function log(msg) {
+        chrome.runtime.getBackgroundPage(function(window) {
+            window.console.log(msg);
+        })
+    }
+
     function onReceive(info) {
         if (socketId !== info.socketId) {
             return;
@@ -29,12 +35,6 @@ function createAgent(groupAddress, port) {
         if (listeners.onMessage) {
             listeners.onMessage(msg);
         }
-    }
-
-    function log(msg) {
-        chrome.runtime.getBackgroundPage(function(window) {
-            window.console.log(msg);
-        })
     }
 
     function onReceiveError(info) {
