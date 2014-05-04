@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Pisces",
-    "description": "IP multicast based messaging.",
+    "description": "IP multicast based chat.",
     "version": "0.1",
     "app": {
         "background": {
