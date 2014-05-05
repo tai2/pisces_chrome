@@ -2,7 +2,7 @@ var pisces = createAgent('224.0.0.1', 30000);
 
 chrome.app.runtime.onLaunched.addListener(function() {
 
-    chrome.app.window.create('html/window.html',
+    chrome.app.window.create('html/timeline.html',
         {
             'bounds': {
                 'width': 400,
