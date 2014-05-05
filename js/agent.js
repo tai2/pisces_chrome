@@ -1,5 +1,10 @@
 function createAgent(groupAddress, port) {
     var socketId = null;
+    var config = {
+        "userId" : null,
+        "groupAddress" : groupAddress,
+        "port" : port,
+    };
     var listeners = {
         "onMessage" : null
     };
@@ -92,8 +97,7 @@ function createAgent(groupAddress, port) {
         "start" : start,
         "stop" : stop,
         "sendMessage" : sendMessage,
-        "groupAddress" : groupAddress,
-        "port" : port,
+        "config" : config,
         "listeners" : listeners
     };
 }

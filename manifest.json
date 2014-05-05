@@ -8,10 +8,14 @@
             "scripts": [
                 "js/jquery-2.1.1.min.js",
                 "js/agent.js",
+                "js/pisces.js",
                 "js/background.js"
             ]
         }
     },
+    "permissions" : [
+        "storage"
+    ],
     "sockets" : {
         "udp" : {
             "send": ["*"],
