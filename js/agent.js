@@ -1,4 +1,13 @@
 function createAgent(groupAddress, port) {
+
+    const PT_HELLO = 0x01;
+    const PT_BYE = 0x02;
+    const PT_MESSAGE = 0x03;
+    const PT_FILE_LIST_REQUEST = 0x04;
+    const PT_FILE_LIST = 0x05;
+    const PT_FILE_SEGMENT_REQUEST = 0x06;
+    const PT_FILE_SEGMENT = 0x07;
+
     var socketId = null;
     var config = {
         "userId" : null,
