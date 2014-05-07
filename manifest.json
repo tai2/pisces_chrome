@@ -6,7 +6,6 @@
     "app": {
         "background": {
             "scripts": [
-                "js/agent.js",
                 "js/pisces.js",
                 "js/background.js"
             ]
