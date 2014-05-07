@@ -52,22 +52,31 @@ function createAgent(groupAddress, port) {
         chrome.sockets.udp.create({}, function(info) {
             chrome.sockets.udp.onReceive.addListener(onReceive);
             chrome.sockets.udp.onReceiveError.addListener(onReceiveError);
-            chrome.sockets.udp.bind(info.socketId, "0.0.0.0", port, function(result) {
+            chrome.sockets.udp.setMulticastLoopbackMode(info.socketId, true, function(result) {
                 if (result < 0) {
-                    log("Binding socket failed.");
+                    log("Setting loopback mode failed.");
                     // TODO: error handling
                     return;
                 }
 
-                chrome.sockets.udp.joinGroup(info.socketId, groupAddress, function(result) {
+                chrome.sockets.udp.bind(info.socketId, '0.0.0.0', port, function(result) {
                     if (result < 0) {
-                        log("joining multicast group failed.");
+                        log("Binding socket failed.");
                         // TODO: error handling
                         return;
                     }
 
-                    socketId = info.socketId;
-                    log("pisces agent started.");
+
+                    chrome.sockets.udp.joinGroup(info.socketId, groupAddress, function(result) {
+                        if (result < 0) {
+                            log("joining multicast group failed.");
+                            // TODO: error handling
+                            return;
+                        }
+
+                        socketId = info.socketId;
+                        log("pisces agent started.");
+                    });
                 });
             });
         });
