@@ -19,15 +19,21 @@ function createAgent(groupAddress, port) {
     };
 
     function ab2str(buf) {
-        return String.fromCharCode.apply(null, new Uint16Array(buf));
+        var bufview = new DataView(buf);
+        var len = buf.byteLength / 2;
+        var array = new Array(len);
+        for (var i = 0; i < len; i++) {
+            array[i] = bufview.getUint16(2 * i);
+        }
+        return String.fromCharCode.apply(null, array);
     }
 
     function str2ab(str) {
        var buf = new ArrayBuffer(str.length * 2);
-       var bufView = new Uint16Array(buf);
+       var bufview = new DataView(buf);
        var len = str.length;
        for (var i = 0; i < len; i++) {
-         bufView[i] = str.charCodeAt(i);
+         bufview.setUint16(2 * i, str.charCodeAt(i), false);
        }
        return buf;
     }
