@@ -54,14 +54,14 @@ function createAgent(groupAddress, port) {
             chrome.sockets.udp.onReceiveError.addListener(onReceiveError);
             chrome.sockets.udp.setMulticastLoopbackMode(info.socketId, true, function(result) {
                 if (result < 0) {
-                    log("Setting loopback mode failed.");
+                    log("Setting loopback mode failed. cause=" + chrome.runtime.lastError.message);
                     // TODO: error handling
                     return;
                 }
 
                 chrome.sockets.udp.bind(info.socketId, '0.0.0.0', port, function(result) {
                     if (result < 0) {
-                        log("Binding socket failed.");
+                        log("Binding socket failed. cause=" + chrome.runtime.lastError.message);
                         // TODO: error handling
                         return;
                     }
@@ -69,7 +69,7 @@ function createAgent(groupAddress, port) {
 
                     chrome.sockets.udp.joinGroup(info.socketId, groupAddress, function(result) {
                         if (result < 0) {
-                            log("joining multicast group failed.");
+                            log("joining multicast group failed. cause=" + chrome.runtime.lastError.message);
                             // TODO: error handling
                             return;
                         }
@@ -86,7 +86,7 @@ function createAgent(groupAddress, port) {
         if (socketId) {
             chrome.sockets.udp.leaveGroup(socketId, groupAddress, function(result) {
                 if (result < 0) {
-                    log("leaving multicast group failed.");
+                    log("leaving multicast group failed. cause=" + chrome.runtime.lastError.message);
                 }
                 chrome.sockets.udp.close(socketId, function() {
                     socketId = null;
