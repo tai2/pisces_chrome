@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     chrome.runtime.getBackgroundPage(function(window) {
-        var pisces = window.pisces;
+
+        pisces.agent.sendHello();
 
         $("#user_id").text(pisces.agent.config.userId);
 
@@ -8,9 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
             pisces.agent.sendMessage($("#message").val());
         });
 
+        pisces.agent.listeners.onHello = function(sender_id, iconHash, userName) {
+        };
         pisces.agent.listeners.onMessage = function(message) {
             $("#received").text(message);
-        }
+        };
     });
 });
 

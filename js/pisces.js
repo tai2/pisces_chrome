@@ -9,6 +9,7 @@ var pisces;
     const PT_FILE_LIST = 0x05;
     const PT_FILE_SEGMENT_REQUEST = 0x06;
     const PT_FILE_SEGMENT = 0x07;
+    const EMPTY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
     var socketId = null;
     var agent_config = {
@@ -18,8 +19,10 @@ var pisces;
         "userName" : "Anonymous"
     };
     var agent_listeners = {
-        "onMessage" : null
+        "onMessage" : null,
+        "onHello" : null
     };
+    var participants = {};
 
     function log(msg) {
         chrome.runtime.getBackgroundPage(function(window) {
@@ -27,95 +30,11 @@ var pisces;
         })
     }
 
-    function ab2str(buf) {
-        var bufview = new DataView(buf);
-        var len = buf.byteLength / 2;
-        var array = new Array(len);
-        for (var i = 0; i < len; i++) {
-            array[i] = bufview.getUint16(2 * i);
-        }
-        return String.fromCharCode.apply(null, array);
-    }
-
-    function str2ab(str) {
-       var buf = new ArrayBuffer(str.length * 2);
-       var bufview = new DataView(buf);
-       var len = str.length;
-       for (var i = 0; i < len; i++) {
-         bufview.setUint16(2 * i, str.charCodeAt(i), false);
-       }
-       return buf;
-    }
-
     function uuid_generate() {
         // XXX: I don't now this is a correct way to generate a random UUID.
         var array = new Uint8Array(16);
         crypto.getRandomValues(array);
-
-        var str = "";
-        var i;
-        for (i = 0; i < 4; i++) {
-            str += ((array[i]>>0)&0xF).toString(16);
-            str += ((array[i]>>4)&0xF).toString(16);
-        }
-        str += "-";
-        for (i = 4; i < 6; i++) {
-            str += ((array[i]>>0)&0xF).toString(16);
-            str += ((array[i]>>4)&0xF).toString(16);
-        }
-        str += "-";
-        for (i = 6; i < 8; i++) {
-            str += ((array[i]>>0)&0xF).toString(16);
-            str += ((array[i]>>4)&0xF).toString(16);
-        }
-        str += "-";
-        for (i = 8; i < 10; i++) {
-            str += ((array[i]>>0)&0xF).toString(16);
-            str += ((array[i]>>4)&0xF).toString(16);
-        }
-        str += "-";
-        for (i = 10; i < 16; i++) {
-            str += ((array[i]>>0)&0xF).toString(16);
-            str += ((array[i]>>4)&0xF).toString(16);
-        }
-        return str;
-    }
-
-    function uuid_binrepl(uuid) {
-        var array = new Uint8Array(16);
-        var i = 0;
-
-        // first segment
-        array[0] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[1] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[2] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[3] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        i++;
-
-        // second segment
-        array[4] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[5] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        i++;
-
-        // third segment
-        array[6] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[7] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        i++;
-
-        // fourth segment
-        array[8] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[9] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        i++;
-
-        // last segment
-        array[10] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[11] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[12] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[13] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[14] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-        array[15] = (parseInt(uuid.charAt(i++), 16)<<4) | parseInt(uuid.charAt(i++), 16);
-
-        return array;
+        return new DataView(array.buffer).getUuid(0);
     }
 
     function onReceive(info) {
@@ -123,11 +42,17 @@ var pisces;
             return;
         }
 
-        var msg = ab2str(info.data);
-        log("from " + info.remoteAddress + ":" + info.remotePort + " " + info.data.byteLength + " bytes received");
-        log(msg);
-        if (agent_listeners.onMessage) {
-            agent_listeners.onMessage(msg);
+        // TODO: Check data length
+
+        var dataview = new DataView(info.data);
+        var type = dataview.getUint16(0, false);
+
+        log("onReceive type=" + type + " size=" + info.data.byteLength);
+
+        switch (type) {
+        case PT_HELLO:
+            parseHello(dataview);
+            break;
         }
     }
 
@@ -137,7 +62,7 @@ var pisces;
         // TODO: error handling
     }
 
-    function agent_start() {
+    function agent_start(callback) {
         chrome.sockets.udp.create({}, function(info) {
             chrome.sockets.udp.onReceive.addListener(onReceive);
             chrome.sockets.udp.onReceiveError.addListener(onReceiveError);
@@ -164,14 +89,16 @@ var pisces;
                         }
 
                         socketId = info.socketId;
-                        log("pisces agent started.");
+                        if (callback) {
+                            callback();
+                        }
                     });
                 });
             });
         });
     }
 
-    function agent_stop() {
+    function agent_stop(callback) {
         if (socketId) {
             chrome.sockets.udp.leaveGroup(socketId, agent_config.groupAddress, function(result) {
                 if (result < 0) {
@@ -179,14 +106,31 @@ var pisces;
                 }
                 chrome.sockets.udp.close(socketId, function() {
                     socketId = null;
-                    log("pisces agent stopped.");
+                    if (callback) {
+                        callback();
+                    }
                 });
             });
         }
     }
 
     function agent_sendMessage(message) {
-        chrome.sockets.udp.send(socketId, str2ab(message), agent_config.groupAddress, agent_config.port, function(info) {
+    }
+
+    function agent_sendHello() {
+        var byteLength = 2 + 16 + 16 + 20 + 60 * 2;
+        var buf = new ArrayBuffer(byteLength);
+        var dataview = new DataView(buf);
+
+        dataview.setUint16(0, PT_HELLO, false);
+        dataview.setUuid(2, agent_config.userId);
+        dataview.setUuid(2 + 16, EMPTY_USER_ID);
+        dataview.setSha1Hash(2 + 16 + 16, '0000000000000000000000000000000000000000');
+        dataview.setString(2 + 16 + 16 + 20, 60, agent_config.userName);
+
+        // TODO: Unicast mode
+
+        chrome.sockets.udp.send(socketId, buf, agent_config.groupAddress, agent_config.port, function(info) {
             if (info.resultCode < 0) {
                 log("send failed. cause=" + chrome.runtime.lastError.message);
                 // TODO: error handling
@@ -196,14 +140,33 @@ var pisces;
         });
     }
 
+    function parseHello(dataview) {
+        var sender_id = dataview.getUuid(2);
+        var destination_id = dataview.getUuid(2 + 16);
+        var icon_hash = dataview.getSha1Hash(2 + 16 + 16);
+        var user_name = dataview.getString(2 + 16 + 16 + 20, 60);
+
+        if (sender_id !== agent_config.userId) {
+            participants[sender_id] = {
+                "id" : sender_id,
+                "icon_hash" : icon_hash,
+                "user_name" : user_name
+            }
+
+            if (agent_listeners.onHello) {
+                agent_listeners.onHello(sender_id, icon_hash, user_name);
+            }
+        }
+    }
+
     pisces = {
         "uuid" : {
             "generate" : uuid_generate,
-            "binrepl" : uuid_binrepl
         },
         "agent" : {
             "start" : agent_start,
             "stop" : agent_stop,
+            "sendHello" : agent_sendHello,
             "sendMessage" : agent_sendMessage,
             "config" : agent_config,
             "listeners" : agent_listeners
