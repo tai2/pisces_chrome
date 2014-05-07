@@ -89,7 +89,12 @@ function createAgent(groupAddress, port) {
 
     function sendMessage(message) {
         chrome.sockets.udp.send(socketId, str2ab(message), groupAddress, port, function(info) {
-           log(info.bytesSent + " bytes sent.");
+            if (info.resultCode < 0) {
+                console.log("send failed. cause=" + chrome.runtime.lastError.message);
+                // TODO: error handling
+                return;
+            }
+            log(info.bytesSent + " bytes sent.");
         });
     }
 
