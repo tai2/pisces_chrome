@@ -10,9 +10,12 @@ document.addEventListener('DOMContentLoaded', function() {
             pisces.agent.sendMessage($("#message").val());
         });
 
-        pisces.agent.listeners.onHello = function(senderId, iconHash, username) {
-            $("#participants tbody").append("<tr><td>" + senderId + "</td><td>" + username + "</td></tr>");
+        pisces.agent.listeners.onHello = function(info) {
+            $("#participants tbody").append("<tr><td>" + info.id + "</td><td>" + info.username + "</td></tr>");
         };
+        pisces.agent.listeners.onBye = function(info) {
+            $("#leave_message").text(info.username + " has leaved.");
+        }
         pisces.agent.listeners.onMessage = function(message) {
             $("#received").text(message);
         };

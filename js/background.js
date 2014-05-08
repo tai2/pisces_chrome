@@ -26,8 +26,10 @@ chrome.app.runtime.onLaunched.addListener(function() {
                     window.contentWindow.pisces = pisces;
 
                     window.onClosed.addListener(function() {
-                        pisces.agent.stop(function() {
-                            console.log("pisces agent stopped.");
+                        pisces.agent.sendBye(function(result) {
+                            pisces.agent.stop(function() {
+                                console.log("pisces agent stopped.");
+                            });
                         });
                     });
                 });

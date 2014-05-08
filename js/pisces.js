@@ -19,8 +19,9 @@ var pisces;
         "username" : "Anonymous"
     };
     var agent_listeners = {
-        "onMessage" : null,
-        "onHello" : null
+        "onHello" : null,
+        "onBye" : null,
+        "onMessage" : null
     };
     var agent_participants = {};
 
@@ -52,6 +53,9 @@ var pisces;
         switch (type) {
         case PT_HELLO:
             parseHello(info);
+            break;
+        case PT_BYE:
+            parseBye(info);
             break;
         }
     }
@@ -117,7 +121,7 @@ var pisces;
     function agent_sendMessage(message) {
     }
 
-    function agent_sendHello(destinationId) {
+    function agent_sendHello(destinationId, callback) {
         var byteLength = 2 + 16 + 16 + 20 + 60 * 2;
         var buf = new ArrayBuffer(byteLength);
         var dataview = new DataView(buf);
@@ -143,6 +147,10 @@ var pisces;
         dataview.setString(2 + 16 + 16 + 20, 60, agent_config.username);
 
         chrome.sockets.udp.send(socketId, buf, destAddr, agent_config.port, function(info) {
+            if (callback) {
+                callback(info.resultCode);
+            }
+
             if (info.resultCode < 0) {
                 log("send failed. cause=" + chrome.runtime.lastError.message);
                 // TODO: error handling
@@ -173,7 +181,44 @@ var pisces;
             }
 
             if (agent_listeners.onHello) {
-                agent_listeners.onHello(senderId, iconHash, username);
+                agent_listeners.onHello(agent_participants[senderId]);
+            }
+        }
+    }
+
+    function agent_sendBye(callback) {
+        var byteLength = 2 + 16;
+        var buf = new ArrayBuffer(byteLength);
+        var dataview = new DataView(buf);
+
+        dataview.setUint16(0, PT_BYE, false);
+        dataview.setUuid(2, agent_config.userId);
+
+        chrome.sockets.udp.send(socketId, buf, agent_config.groupAddress, agent_config.port, function(info) {
+            if (callback) {
+                callback(info.resultCode);
+            }
+
+            if (info.resultCode < 0) {
+                log("send failed. cause=" + chrome.runtime.lastError.message);
+                // TODO: error handling
+                return;
+            }
+            log(info.bytesSent + " bytes sent.");
+        });
+    }
+
+    function parseBye(info) {
+        var dataview = new DataView(info.data, 2);
+        var senderId = dataview.getUuid(0);
+
+        if (senderId !== agent_config.userId) {
+            var leftUser = agent_participants[senderId];
+
+            delete agent_participants[senderId];
+
+            if (agent_listeners.onBye) {
+                agent_listeners.onBye(leftUser);
             }
         }
     }
@@ -186,6 +231,7 @@ var pisces;
             "start" : agent_start,
             "stop" : agent_stop,
             "sendHello" : agent_sendHello,
+            "sendBye" : agent_sendBye,
             "sendMessage" : agent_sendMessage,
             "participants" : agent_participants,
             "config" : agent_config,
