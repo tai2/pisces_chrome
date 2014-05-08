@@ -10,11 +10,19 @@ document.addEventListener('DOMContentLoaded', function() {
             pisces.agent.sendMessage($("#message").val());
         });
 
+        function updateParticipants() {
+            var rows = "";
+            for (var id in pisces.agent.participants) {
+                var user = pisces.agent.participants[id];
+                rows += "<tr><td>" + user.id + "</td><td>" + user.username + "</td></tr>\n";
+            }
+            $("#participants tbody").html(rows);
+        }
         pisces.agent.listeners.onHello = function(info) {
-            $("#participants tbody").append("<tr><td>" + info.id + "</td><td>" + info.username + "</td></tr>");
+            updateParticipants();
         };
         pisces.agent.listeners.onBye = function(info) {
-            $("#leave_message").text(info.username + " has leaved.");
+            updateParticipants();
         }
         pisces.agent.listeners.onMessage = function(message) {
             $("#received").text(message);
