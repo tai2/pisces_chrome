@@ -38,7 +38,7 @@ var pisces;
         return new DataView(array.buffer).getUuid(0);
     }
 
-    function onReceive(info) {
+    chrome.sockets.udp.onReceive.addListener(function(info) {
         if (socketId !== info.socketId) {
             return;
         }
@@ -58,18 +58,16 @@ var pisces;
             parseBye(info);
             break;
         }
-    }
+    });
 
-    function onReceiveError(info) {
+    chrome.sockets.udp.onReceiveError.addListener(function (info) {
         log("onReceiveError resultCode=" + info.resultCode);
 
         // TODO: error handling
-    }
+    });
 
     function agent_start(callback) {
         chrome.sockets.udp.create({}, function(info) {
-            chrome.sockets.udp.onReceive.addListener(onReceive);
-            chrome.sockets.udp.onReceiveError.addListener(onReceiveError);
             chrome.sockets.udp.setMulticastLoopbackMode(info.socketId, true, function(result) {
                 if (result < 0) {
                     log("Setting loopback mode failed. cause=" + chrome.runtime.lastError.message);
