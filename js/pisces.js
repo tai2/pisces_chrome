@@ -22,7 +22,7 @@ var pisces;
         "onMessage" : null,
         "onHello" : null
     };
-    var participants = {};
+    var agent_participants = {};
 
     function log(msg) {
         chrome.runtime.getBackgroundPage(function(window) {
@@ -128,9 +128,9 @@ var pisces;
             destId = EMPTY_USER_ID;
             destAddr = agent_config.groupAddress;
         } else {
-            if (participants[destinationId]) {
+            if (agent_participants[destinationId]) {
                 destId = destinationId;
-                destAddr = participants[destinationId].remoteAddress;
+                destAddr = agent_participants[destinationId].remoteAddress;
             } else {
                 return;
             }
@@ -160,7 +160,7 @@ var pisces;
         var username = dataview.getString(16 + 16 + 20, 60);
 
         if (senderId !== agent_config.userId) {
-            participants[senderId] = {
+            agent_participants[senderId] = {
                 "id" : senderId,
                 "icon_hash" : iconHash,
                 "username" : username,
@@ -187,6 +187,7 @@ var pisces;
             "stop" : agent_stop,
             "sendHello" : agent_sendHello,
             "sendMessage" : agent_sendMessage,
+            "participants" : agent_participants,
             "config" : agent_config,
             "listeners" : agent_listeners
         }
