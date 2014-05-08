@@ -46,7 +46,7 @@ var pisces;
         // TODO: Check data length
 
         var dataview = new DataView(info.data);
-        var type = dataview.getUint16(0, false);
+        var type = dataview.getUint8(0, false);
 
         log("onReceive type=" + type + " size=" + info.data.byteLength);
 
@@ -120,7 +120,7 @@ var pisces;
     }
 
     function agent_sendHello(destinationId, callback) {
-        var byteLength = 2 + 16 + 16 + 20 + 60 * 2;
+        var byteLength = 1 + 3 + 16 + 16 + 20 + 60 * 2;
         var buf = new ArrayBuffer(byteLength);
         var dataview = new DataView(buf);
 
@@ -138,11 +138,11 @@ var pisces;
             }
         }
 
-        dataview.setUint16(0, PT_HELLO, false);
-        dataview.setUuid(2, agent_config.userId);
-        dataview.setUuid(2 + 16, destId);
-        dataview.setSha1Hash(2 + 16 + 16, '0000000000000000000000000000000000000000');
-        dataview.setString(2 + 16 + 16 + 20, 60, agent_config.username);
+        dataview.setUint8(0, PT_HELLO, false);
+        dataview.setUuid(4, agent_config.userId);
+        dataview.setUuid(4 + 16, destId);
+        dataview.setSha1Hash(4 + 16 + 16, '0000000000000000000000000000000000000000');
+        dataview.setString(4 + 16 + 16 + 20, 60, agent_config.username);
 
         chrome.sockets.udp.send(socketId, buf, destAddr, agent_config.port, function(info) {
             if (callback) {
@@ -159,7 +159,7 @@ var pisces;
     }
 
     function parseHello(info) {
-        var dataview = new DataView(info.data, 2);
+        var dataview = new DataView(info.data, 4);
         var senderId = dataview.getUuid(0);
         var destinationId = dataview.getUuid(16);
         var iconHash = dataview.getSha1Hash(16 + 16);
@@ -185,12 +185,12 @@ var pisces;
     }
 
     function agent_sendBye(callback) {
-        var byteLength = 2 + 16;
+        var byteLength = 1 + 3 + 16;
         var buf = new ArrayBuffer(byteLength);
         var dataview = new DataView(buf);
 
-        dataview.setUint16(0, PT_BYE, false);
-        dataview.setUuid(2, agent_config.userId);
+        dataview.setUint8(0, PT_BYE, false);
+        dataview.setUuid(4, agent_config.userId);
 
         chrome.sockets.udp.send(socketId, buf, agent_config.groupAddress, agent_config.port, function(info) {
             if (callback) {
@@ -207,7 +207,7 @@ var pisces;
     }
 
     function parseBye(info) {
-        var dataview = new DataView(info.data, 2);
+        var dataview = new DataView(info.data, 4);
         var senderId = dataview.getUuid(0);
 
         if (senderId !== agent_config.userId) {
