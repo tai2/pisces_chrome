@@ -141,20 +141,20 @@ var pisces;
     }
 
     function parseHello(dataview) {
-        var sender_id = dataview.getUuid(2);
-        var destination_id = dataview.getUuid(2 + 16);
-        var icon_hash = dataview.getSha1Hash(2 + 16 + 16);
-        var user_name = dataview.getString(2 + 16 + 16 + 20, 60);
+        var senderId = dataview.getUuid(2);
+        var destinationId = dataview.getUuid(2 + 16);
+        var iconHash = dataview.getSha1Hash(2 + 16 + 16);
+        var username = dataview.getString(2 + 16 + 16 + 20, 60);
 
-        if (sender_id !== agent_config.userId) {
-            participants[sender_id] = {
-                "id" : sender_id,
-                "icon_hash" : icon_hash,
-                "user_name" : user_name
+        if (senderId !== agent_config.userId) {
+            participants[senderId] = {
+                "id" : senderId,
+                "icon_hash" : iconHash,
+                "username" : username
             }
 
             if (agent_listeners.onHello) {
-                agent_listeners.onHello(sender_id, icon_hash, user_name);
+                agent_listeners.onHello(senderId, iconHash, username);
             }
         }
     }
