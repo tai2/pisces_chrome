@@ -6,6 +6,8 @@
     "app": {
         "background": {
             "scripts": [
+                "js/sha1.js",
+                "js/lib-typedarrays-min.js",
                 "js/extension.js",
                 "js/pisces.js",
                 "js/background.js"
