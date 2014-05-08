@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         pisces.agent.listeners.onHello = function(sender_id, iconHash, userName) {
+            $("#participants tbody").append("<tr><td>" + sender_id + "</td><td>" + userName + "</td></tr>");
         };
         pisces.agent.listeners.onMessage = function(message) {
             $("#received").text(message);
