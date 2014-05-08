@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', function() {
         pisces.agent.sendHello();
 
         $("#user_id").text(pisces.agent.config.userId);
-        $("#username").text(pisces.agent.config.username);
+        $("#username").attr("value", pisces.agent.config.username);
+        $("#username").change(function() {
+            chrome.storage.local.set({'username' : $("#username").val()});
+        });
 
         $("#send_button").click(function() {
             pisces.agent.sendMessage($("#message").val());

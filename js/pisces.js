@@ -16,7 +16,7 @@ var pisces;
         "userId" : null,
         "groupAddress" : "224.0.0.1",
         "port" : 30000,
-        "username" : "Anonymous"
+        "username" : null
     };
     var agent_listeners = {
         "onHello" : null,
