@@ -16,7 +16,7 @@ var pisces;
         "userId" : null,
         "groupAddress" : "224.0.0.1",
         "port" : 30000,
-        "userName" : "Anonymous"
+        "username" : "Anonymous"
     };
     var agent_listeners = {
         "onMessage" : null,
@@ -51,7 +51,7 @@ var pisces;
 
         switch (type) {
         case PT_HELLO:
-            parseHello(dataview);
+            parseHello(info);
             break;
         }
     }
@@ -117,20 +117,32 @@ var pisces;
     function agent_sendMessage(message) {
     }
 
-    function agent_sendHello() {
+    function agent_sendHello(destinationId) {
         var byteLength = 2 + 16 + 16 + 20 + 60 * 2;
         var buf = new ArrayBuffer(byteLength);
         var dataview = new DataView(buf);
 
+        var destId;
+        var destAddr;
+        if (destinationId === undefined) {
+            destId = EMPTY_USER_ID;
+            destAddr = agent_config.groupAddress;
+        } else {
+            if (participants[destinationId]) {
+                destId = destinationId;
+                destAddr = participants[destinationId].remoteAddress;
+            } else {
+                return;
+            }
+        }
+
         dataview.setUint16(0, PT_HELLO, false);
         dataview.setUuid(2, agent_config.userId);
-        dataview.setUuid(2 + 16, EMPTY_USER_ID);
+        dataview.setUuid(2 + 16, destId);
         dataview.setSha1Hash(2 + 16 + 16, '0000000000000000000000000000000000000000');
-        dataview.setString(2 + 16 + 16 + 20, 60, agent_config.userName);
+        dataview.setString(2 + 16 + 16 + 20, 60, agent_config.username);
 
-        // TODO: Unicast mode
-
-        chrome.sockets.udp.send(socketId, buf, agent_config.groupAddress, agent_config.port, function(info) {
+        chrome.sockets.udp.send(socketId, buf, destAddr, agent_config.port, function(info) {
             if (info.resultCode < 0) {
                 log("send failed. cause=" + chrome.runtime.lastError.message);
                 // TODO: error handling
@@ -140,17 +152,24 @@ var pisces;
         });
     }
 
-    function parseHello(dataview) {
-        var senderId = dataview.getUuid(2);
-        var destinationId = dataview.getUuid(2 + 16);
-        var iconHash = dataview.getSha1Hash(2 + 16 + 16);
-        var username = dataview.getString(2 + 16 + 16 + 20, 60);
+    function parseHello(info) {
+        var dataview = new DataView(info.data, 2);
+        var senderId = dataview.getUuid(0);
+        var destinationId = dataview.getUuid(16);
+        var iconHash = dataview.getSha1Hash(16 + 16);
+        var username = dataview.getString(16 + 16 + 20, 60);
 
         if (senderId !== agent_config.userId) {
             participants[senderId] = {
                 "id" : senderId,
                 "icon_hash" : iconHash,
-                "username" : username
+                "username" : username,
+                "remoteAddress" : info.remoteAddress,
+                "remotePort" : info.remotePort
+            }
+
+            if (destinationId === EMPTY_USER_ID) {
+                agent_sendHello(senderId);
             }
 
             if (agent_listeners.onHello) {
