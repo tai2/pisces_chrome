@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         $("#send_button").click(function() {
-            pisces.agent.sendMessage($("#message").val());
+            pisces.agent.sendMessage($("#message").val(), function(result, info) {
+                console.log("message sent. " + JSON.stringify(info));
+            });
         });
 
         function updateParticipants() {

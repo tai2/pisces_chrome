@@ -4,20 +4,22 @@ addPiscesExtension(this);
 chrome.runtime.onInstalled.addListener(function(details) {
     if (details.reason === "install") {
         chrome.storage.local.set({
-            'user_id' : pisces.uuid.generate(),
-            'username' : "Anonymous"
+            "user_id" : pisces.uuid.generate(),
+            "username" : "Anonymous",
+            "seqnum" : 0
         });
     }
 });
 
 chrome.app.runtime.onLaunched.addListener(function() {
-    chrome.storage.local.get(["user_id", "username"], function(items) {
+    chrome.storage.local.get(["user_id", "username", "seqnum"], function(items) {
 
         pisces.agent.config.userId = items["user_id"];
         pisces.agent.config.username = items["username"];
+        pisces.agent.seqnum = items["seqnum"];
 
         pisces.agent.start(function() {
-            console.log("pisces agent started.");
+            console.log("pisces agent started. seqnum=" + pisces.agent.seqnum);
 
             chrome.app.window.create('html/timeline.html',
                 {
@@ -33,6 +35,7 @@ chrome.app.runtime.onLaunched.addListener(function() {
                     window.onClosed.addListener(function() {
                         pisces.agent.sendBye(function(result) {
                             pisces.agent.stop(function() {
+                                chrome.storage.local.set({"seqnum" : pisces.agent.seqnum});
                                 console.log("pisces agent stopped.");
                             });
                         });
