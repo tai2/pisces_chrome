@@ -7,6 +7,30 @@ function addPiscesExtension(window) {
         return this;
     };
 
+    // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/find
+    window.Array.method('find', function(predicate) {
+        if (this == null) {
+            throw new TypeError('Array.prototype.find called on null or undefined');
+        }
+        if (typeof predicate !== 'function') {
+            throw new TypeError('predicate must be a function');
+        }
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+
+        for (var i = 0; i < length; i++) {
+            if (i in list) {
+                value = list[i];
+                if (predicate.call(thisArg, value, i, list)) {
+                    return value;
+                }
+            }
+        }
+        return undefined;
+    }); 
+
     // TODO: Validate data source to guarantee a valid UTF-16 string.
     window.DataView.method('getString', function(byteOffset, length) {
         var array = new Array(length);
