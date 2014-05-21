@@ -192,7 +192,7 @@ var pisces;
         }
 
         if (agent.listeners.onHello) {
-            agent.listeners.onHello(agent_participants[senderId]);
+            agent.listeners.onHello(agent.participants[senderId]);
         }
     }
 
