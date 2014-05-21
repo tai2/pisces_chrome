@@ -179,22 +179,20 @@ var pisces;
         var iconHash = dataview.getSha1Hash(16 + 16);
         var username = dataview.getString(16 + 16 + 20, 60);
 
-        if (senderId !== agent.config.userId) {
-            agent.participants[senderId] = {
-                "id" : senderId,
-                "icon_hash" : iconHash,
-                "username" : username,
-                "remoteAddress" : info.remoteAddress,
-                "remotePort" : info.remotePort
-            }
+        agent.participants[senderId] = {
+            "id" : senderId,
+            "icon_hash" : iconHash,
+            "username" : username,
+            "remoteAddress" : info.remoteAddress,
+            "remotePort" : info.remotePort
+        }
 
-            if (destinationId === EMPTY_USER_ID) {
-                agent_sendHello(senderId);
-            }
+        if (destinationId === EMPTY_USER_ID) {
+            agent_sendHello(senderId);
+        }
 
-            if (agent.listeners.onHello) {
-                agent.listeners.onHello(agent_participants[senderId]);
-            }
+        if (agent.listeners.onHello) {
+            agent.listeners.onHello(agent_participants[senderId]);
         }
     }
 
