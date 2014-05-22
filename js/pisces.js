@@ -1,6 +1,4 @@
-var pisces;
-
-(function() {
+var pisces = (function() {
 
     const MTU = 1500;
     const IP_HEADER_SIZE = 20; // no options assumed
@@ -475,7 +473,7 @@ var pisces;
         }
     }
 
-    pisces = {
+    return {
         "uuid" : {
             "generate" : uuid_generate,
         },
