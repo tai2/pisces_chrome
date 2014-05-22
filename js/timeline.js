@@ -29,8 +29,9 @@ document.addEventListener('DOMContentLoaded', function() {
         pisces.agent.listeners.onBye = function(info) {
             updateParticipants();
         }
-        pisces.agent.listeners.onMessage = function(message) {
-            $("#received").text(message);
+        pisces.agent.listeners.onMessage = function(message, timestamp) {
+            var date = new Date(timestamp);
+            $("#received").text(message + '(' + date + ')');
         };
     });
 });

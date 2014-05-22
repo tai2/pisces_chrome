@@ -16,6 +16,7 @@ var pisces;
     const EMPTY_USER_ID = "00000000-0000-0000-0000-000000000000";
     const MESSAGE_HEADER_SIZE = 1 + 3 + 16 + 4 + 8 + 20 + 4;
     const MESSAGE_BODY_LIMIT = UDP_PAYLOAD_SIZE - MESSAGE_HEADER_SIZE;
+    const BUFFER_LIMIT = 64 * 1024;
 
     var messagesSent = [];
     var socketId = null;
@@ -73,6 +74,7 @@ var pisces;
             parseBye(info);
             break;
         case PT_MESSAGE:
+            parseMessage(info);
             break;
         }
     });
@@ -180,12 +182,16 @@ var pisces;
         var username = dataview.getString(16 + 16 + 20, 60);
 
         agent.participants[senderId] = {
-            "id" : senderId,
-            "icon_hash" : iconHash,
-            "username" : username,
-            "remoteAddress" : info.remoteAddress,
-            "remotePort" : info.remotePort
-        }
+            id : senderId,
+            icon_hash : iconHash,
+            username : username,
+            remoteAddress : info.remoteAddress,
+            remotePort : info.remotePort,
+            receiveBuffer : [],
+            bufferSize : 0,
+            assembleTable : {},
+            receivedMessages : {}
+        };
 
         if (destinationId === EMPTY_USER_ID) {
             agent_sendHello(senderId);
@@ -239,6 +245,10 @@ var pisces;
         });
     }
 
+    function numPackets(messageLen) {
+        return Math.floor((messageLen * 2 + MESSAGE_BODY_LIMIT - 1) / MESSAGE_BODY_LIMIT);
+    }
+
     function sendMessagePacket(seqnum, callback) {
         var packnum, bodyLength, flags, buf, dataview, substr, info;
 
@@ -261,7 +271,7 @@ var pisces;
         dataview.setUint8(3, (flags>> 0)&0xFF);
         dataview.setUuid(4, agent.config.userId);
         dataview.setUint32(4 + 16, seqnum);
-        dataview.setFloat64(4 + 16 + 4, info.date, false);
+        dataview.setFloat64(4 + 16 + 4, info.timestamp, false);
         dataview.setSha1Hash(4 + 16 + 4 + 8, info.hash);
         dataview.setUint32(4 + 16 + 4 + 8 + 20, info.message.length, false);
         dataview.setString(4 + 16 + 4 + 8 + 20 + 4, substr.length, substr);
@@ -277,6 +287,14 @@ var pisces;
                 callback(info.resultCode);
             }
         });
+    }
+
+    function seqgen(initial, num) {
+        var result = [], i;
+        for (i = 0; i < num; i++) {
+            result.push(initial + i);
+        }
+        return result;
     }
 
     function agent_sendMessage(messageOrSeqnum, callback) {
@@ -303,19 +321,15 @@ var pisces;
         } else {
             messageInfo = {
                 seqnum : agent.seqnum + 1,
-                numPackets : Math.floor((messageOrSeqnum.length * 2 + MESSAGE_BODY_LIMIT - 1) / MESSAGE_BODY_LIMIT),
-                date : Date.now(),
+                numPackets : numPackets(messageOrSeqnum.length),
+                timestamp : Date.now(),
                 message : messageOrSeqnum,
                 hash : CryptoJS.SHA1(messageOrSeqnum).toString()
             };
             messagesSent.push(messageInfo);
             agent.seqnum += messageInfo.numPackets;
 
-            seqnums = [];
-            for (i = 0; i < messageInfo.numPackets; i++) {
-                seqnums.push(messageInfo.seqnum + i);
-            }
-
+            seqnums = seqgen(messageInfo.seqnum, messageInfo.numPackets);
             send(0);
         }
 
@@ -348,6 +362,116 @@ var pisces;
                     }
                 }
             });
+        }
+    }
+
+    function parseMessage(info) {
+        var dataview = new DataView(info.data);
+        var flags = (dataview.getUint8(1)<<16) | (dataview.getUint8(2)<<8) | dataview.getUint8(3);
+        var senderId = dataview.getUuid(4);
+        var seqnum = dataview.getUint32(4 + 16, false);
+        var timestamp = dataview.getFloat64(4 + 16 + 4, false);
+        var hash = dataview.getSha1Hash(4 + 16 + 4 + 8);
+        var messageLength = dataview.getUint32(4 + 16 + 4 + 8 + 20, false);
+        var body = dataview.getString(4 + 16 + 4 + 8 + 20 + 4, (info.data.byteLength - MESSAGE_HEADER_SIZE) / 2);
+        var user, packet, key;
+
+        user = agent.participants[senderId];
+        key = hash + '_' + timestamp;
+        if (user) {
+            if (!user.receivedMessages[key]) {
+                packet = {
+                    flags : flags,
+                    seqnum : seqnum,
+                    timestamp : timestamp,
+                    hash : hash,
+                    messageLength : messageLength,
+                    body : body,
+                    numPackets : numPackets(messageLength)
+                };
+
+                user.receiveBuffer.push(packet);
+                user.bufferSize += body.length * 2 + MESSAGE_HEADER_SIZE;
+                setupAssembling(user, packet);
+                assemble(user, packet);
+                shrink(user);
+
+                log("user=" + senderId + " bufferSize=" + user.bufferSize);
+            }
+        } else {
+            // TODO: Query user information?
+        }
+
+        function setupAssembling(user, packet) {
+            var assembling, key;
+            if (packet.flags&0x800000) {
+                key = packet.hash + '_' + packet.timestamp;
+                assembling = user.assembleTable[key];
+                if (assembling) {
+                    assembling.initialPacket = packet;
+                    assembling.packets[packet.seqnum] = packet;
+                } else {
+                    assembling = {
+                        initialPacket: packet,
+                        packets : {},
+                        seqnums : seqgen(packet.seqnum, packet.numPackets)
+                    };
+                    user.assembleTable[key] = assembling;
+                    user.receiveBuffer.forEach(function(packet) {
+                        // XXX: A little slow? It may be good to add a hash set of seqnums to assembleTable.
+                        if (assembling.seqnums.indexOf(packet.seqnum) !== -1) {
+                            assembling.packets[packet.seqnum] = packet;
+                        }
+                    });
+                }
+            }
+        }
+
+        function assemble(user, packet) {
+            var initialPacket, allset, message, hash;
+            var key = packet.hash + '_' + packet.timestamp;
+            var assembling = user.assembleTable[key];
+            if (assembling) {
+                initialPacket = assembling.initialPacket;
+                if (initialPacket.seqnum <= packet.seqnum
+                        && packet.seqnum < initialPacket.seqnum + initialPacket.numPackets) {
+                    assembling.packets[packet.seqnum] = packet;
+                    allset = assembling.seqnums.every(function(n) { return assembling.packets[n]; });
+                    if (allset) {
+                        if (agent.listeners.onMessage) {
+                            message = assembling.seqnums.reduce(
+                                    function(prev, curr) {return prev + assembling.packets[curr].body;}, "");
+                            hash = CryptoJS.SHA1(message).toString();
+                            if (hash === initialPacket.hash) {
+                                agent.listeners.onMessage(message, initialPacket.timestamp);
+                            }
+                        }
+                        user.receivedMessages[key] = true;
+                        delete user.assembleTable[key];
+                    }
+                }
+            }
+        }
+
+        function shrink(user) {
+            var packet, assembling, key;
+            while (BUFFER_LIMIT < user.bufferSize) {
+                packet = user.receiveBuffer.shift();
+                user.bufferSize -= body.length * 2 + MESSAGE_HEADER_SIZE;
+                key = packet.hash + '_' + packet.timestamp;
+                assembling = user.assembleTable[key];
+                if (assembling) {
+                    if (packet.flags&0x800000) {
+                        if (assembling.initialPacket === packet) {
+                            delete user.assembleTable[key];
+                        }
+                    } else {
+                        if (assembling.packets[packet.seqnum] === packet) {
+                            delete assembling.packets[packet.seqnum];
+                        }
+                    }
+                }
+            }
         }
     }
 
