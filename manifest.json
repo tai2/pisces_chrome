@@ -6,6 +6,7 @@
     "app": {
         "background": {
             "scripts": [
+                "js/stringview.js",
                 "js/sha1.js",
                 "js/lib-typedarrays-min.js",
                 "js/extension.js",
@@ -21,6 +22,9 @@
         "udp" : {
             "send": ["*"],
             "bind": ["*"]
+        },
+        "tcpServer" : {
+            "listen" : ["*"]
         }
     },
     "icons": { "16": "img/icon-16.png", "128": "img/icon-128.png" }
